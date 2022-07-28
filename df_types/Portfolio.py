@@ -9,9 +9,5 @@ class Portfolio_schema(pandera.SchemaModel):
     math_res: pandera.typing.Series[int]
     spread: pandera.typing.Series[float]
 
-    class Config:
-        strict = True
-        ordered = True
-
 
 PortfolioDF = pandera.typing.DataFrame[Portfolio_schema]
