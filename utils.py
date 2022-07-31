@@ -29,3 +29,8 @@ def init_vdf_from_schema(
         data[name] = pd.Series(default_data, index=range(
             nrows), name=name, dtype=dtype)
     return VDataFrame(pd.DataFrame(data))
+
+
+def save_outputs(data, file_name, sheetname, *args, **kwargs):
+    return
+    data.to_excel(f"./outputs/{file_name}", sheetname, *args, **kwargs)

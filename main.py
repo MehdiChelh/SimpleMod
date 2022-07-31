@@ -4,7 +4,7 @@ from virtual_dataframe import VDataFrame, VClient, delayed
 from df_types import *
 from typing import Tuple
 import pandas as pd
-from utils import init_vdf_from_schema
+from utils import init_vdf_from_schema, save_outputs
 
 
 SIM_ID = 0
@@ -63,15 +63,16 @@ def pool_ps(scen_eco_equity: InputDataScenEcoEquityDF, input_data_pool: InputDat
         pool_data["spread"] = input_data_pool["spread"]
         return pool_data
 
-    rdt_year_n1 = scen_eco_equity.iloc[SIM_ID,
-                                       (BEGIN_YEAR_POS+year):(BEGIN_YEAR_POS+year+1)]  # FIXME for now we apply the calculation to 1 simulation only (quick(temp)fix to the index alignement issue)
-    rdt_year_n = scen_eco_equity.iloc[SIM_ID,
-                                      (BEGIN_YEAR_POS+year):(BEGIN_YEAR_POS+year+1)]  # FIXME for now we apply the calculation to 1 simulation only (quick(temp)fix to the index alignement issue)
-    pool_data[pool_data["math_res_bef_ps"] > 1000000]["ps_rate"] = (rdt_year_n /
-                                                                    rdt_year_n1 - 1 + pool_data["spread"])
+    rdt_year_n1 = scen_eco_equity.loc[SIM_ID,
+                                      f"year_{(BEGIN_YEAR_POS+year-1)}"]  # FIXME for now we apply the calculation to 1 simulation only (quick(temp)fix to the index alignement issue)
+    rdt_year_n = scen_eco_equity.loc[SIM_ID,
+                                     f"year_{(BEGIN_YEAR_POS+year)}"]  # FIXME for now we apply the calculation to 1 simulation only (quick(temp)fix to the index alignement issue)
+    pool_data["ps_rate"] = 0.
+    pool_data.loc[pool_data["math_res_bef_ps"] > 1000000, "ps_rate"] = (rdt_year_n /
+                                                                        rdt_year_n1 - 1 + pool_data["spread"])
 
-    pool_data[pool_data["math_res_bef_ps"] <= 1000000]["ps_rate"] = (rdt_year_n /
-                                                                     rdt_year_n1 - 1)
+    pool_data.loc[pool_data["math_res_bef_ps"] <= 1000000, "ps_rate"] = (rdt_year_n /
+                                                                         rdt_year_n1 - 1)
     return pool_data
 
 
@@ -99,13 +100,27 @@ def one_year(
         year: int
 ) -> Tuple[PoolInfoClosing, PolInfoClosing]:
     pol_data: PolInfoOpening = pol_opening(input_data_pol, pol_data, year)
+    # save_outputs(pol_data, "pol_data.xlsx", "pol_opening")
+    # save_outputs(pool_data, "pool_data.xlsx", "pol_opening")
     pol_data: PolInfoBefPs = pol_bef_ps(pol_data, year)
+    # save_outputs(pol_data, "pol_data.xlsx", "pol_bef_ps")
+    # save_outputs(pool_data, "pool_data.xlsx", "pol_bef_ps")
     pool_data: PoolInfoBefPs = pool_bef_ps(pol_data, pool_data)
+    # save_outputs(pol_data, "pol_data.xlsx", "pool_bef_ps")
+    # save_outputs(pool_data, "pool_data.xlsx", "pool_bef_ps")
     pool_ps_rates: PoolPsRates = pool_ps(input_data_scen_eco_equity,
                                          input_data_pool, pool_data, year)
+    # save_outputs(pol_data, "pol_data.xlsx", "pool_ps")
+    # save_outputs(pool_data, "pool_data.xlsx", "pool_ps")
     pol_data: PolInfoClosing = pol_aft_ps(pol_data, pool_ps_rates, year)
+    # save_outputs(pol_data, "pol_data.xlsx", "pol_aft_ps")
+    # save_outputs(pool_data, "pool_data.xlsx", "pol_aft_ps")
     pool_data: PoolInfoClosing = pool_closing(pol_data, pool_data, year)
+    # save_outputs(pol_data, "pol_data.xlsx", "pool_closing")
+    # save_outputs(pool_data, "pool_data.xlsx", "pool_closing")
     pool_data: PoolInfoOpening = pool_opening(pool_data, pol_data, year)
+    # save_outputs(pol_data, "pol_data.xlsx", "pool_opening")
+    # save_outputs(pool_data, "pool_data.xlsx", "pool_opening")
     return pool_data, pol_data
 
 
@@ -122,7 +137,8 @@ if __name__ == "__main__":
                         "year_2": float,
                         "year_3": float,
                         "measure": str
-                    }))  # FIXME implement read_csv_with_schema / DataFrame_with_schema
+                    },
+                    index_col=0))  # FIXME implement read_csv_with_schema / DataFrame_with_schema
 
     nb_pol, _ = input_data_pol.shape
     nb_pool, _ = input_data_pool.shape
@@ -135,14 +151,15 @@ if __name__ == "__main__":
     # FIXME devrait prendre en compte le nombre de simulations
     pool_data = init_vdf_from_schema(
         Pool_schema, nrows=nb_pool, default_data=0)
-    one_year(
-        input_data_pol,
-        input_data_pool,
-        input_data_scen_eco_equity,
-        pol_data,
-        pool_data,
-        0
-    )
+    for year in range(3):
+        one_year(
+            input_data_pol,
+            input_data_pool,
+            input_data_scen_eco_equity,
+            pol_data,
+            pool_data,
+            year
+        )
 
 
 # FAQ :
