@@ -9,9 +9,10 @@ class Pool_schema(pandera.SchemaModel):
     math_res_closing: pandera.typing.Series[np.float32]
 
 
-PoolInfoClosing = pandera.typing.DataFrame[Pool_schema]
-PoolInfoOpening = PoolInfoClosing
-PoolnfoBefPs = PoolInfoClosing
+PoolDF = pandera.typing.DataFrame[Pool_schema]
+PoolInfoClosing = PoolDF
+PoolInfoOpening = PoolDF
+PoolInfoBefPs = PoolDF
 
 
 class PoolPsRatesWithSpread_schema(Pool_schema):
