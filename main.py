@@ -20,23 +20,25 @@ def pol_bef_ps(pol_data: PolInfoOpening, year: int) -> PolInfoBefPs:
 @delayed
 @pandera.check_types
 def pol_aft_ps(pol_data: PolInfoBefPs, pool_ps_rates: PoolPsRates, year: int) -> PolInfoClosing:
-    pol_data["math_res_closing"] = pol_data["math_rs_bef_ps"] * \
+    pol_data["math_res_closing"] = pol_data["math_res_bef_ps"] * \
         (pool_ps_rates["ps_rate"] + 1)
     return pol_data
 
 
 @delayed
 @pandera.check_types
-def pool_closing(pol_data: PolInfoClosing, year: int) -> PoolInfoClosing:
-    return pol_data.groupby("id_pool")["math_res_opening", "math_res_before_ps", "math_res_closing"].sum()
+def pool_closing(pol_data: PolInfoClosing, pool_data: PoolInfoBefPs, year: int) -> PoolInfoClosing:
+    pool_data[["math_res_opening", "math_res_before_ps", "math_res_closing"]] = pol_data.groupby(
+        "id_pool")[["math_res_opening", "math_res_before_ps", "math_res_closing"]].sum()
+    return pool_data
 
 
 @delayed
 @pandera.check_types
 def pool_opening(pool_data: PoolInfoClosing, pol_data: PolInfoOpening, year: int) -> PoolInfoOpening:
     if year == 0:
-        pool_data["math_res_opening"] = pol_data["math_res_opening"].groupby(
-            "id_pool").sum()
+        pool_data["math_res_opening"] = pol_data.groupby(
+            "id_pool")[["math_res_opening"]].sum()
     else:
         pool_data["math_res_opening"] = pool_data["math_res_closing"]
     return pool_data
@@ -56,7 +58,7 @@ def pol_opening(input_data_pol: InputDataPol, pol_data: PolInfoOpening, year: in
 @pandera.check_types
 def pool_ps(scen_eco_equity: InputDataScenEcoEquityDF, input_data_pool: InputDataPool, pool_data: PoolPsRatesWithSpread, year: int) -> PoolPsRates:
     if year == 0:
-        pool_data["ps_rate"] = 0
+        pool_data["ps_rate"] = 0.
         # FIXME index alignement for pool_data & input_data_pool
         pool_data["spread"] = input_data_pool["spread"]
         return pool_data
@@ -96,14 +98,14 @@ def one_year(
         pool_data: PoolDF,
         year: int
 ) -> Tuple[PoolInfoClosing, PolInfoClosing]:
-    # pol_data = pol_opening(pol_data, input_data_pol, year)
-    # pol_data = pol_bef_ps(pol_data, year)
-    # pol_data = pool_bef_ps(pol_data)
-    # pool_ps_rates = pool_ps(input_data_scen_eco_equity,
-    #                         input_data_pool, pool_data, year)
-    # pol_data = pol_aft_ps(pol_data, pool_ps_rates, year)
-    # pool_data = pool_closing(pol_data)
-    # pool_data = pool_opening(pool_data)
+    pol_data: PolInfoOpening = pol_opening(input_data_pol, pol_data, year)
+    pol_data: PolInfoBefPs = pol_bef_ps(pol_data, year)
+    pool_data: PoolInfoBefPs = pool_bef_ps(pol_data, pool_data)
+    pool_ps_rates: PoolPsRates = pool_ps(input_data_scen_eco_equity,
+                                         input_data_pool, pool_data, year)
+    pol_data: PolInfoClosing = pol_aft_ps(pol_data, pool_ps_rates, year)
+    pool_data: PoolInfoClosing = pool_closing(pol_data, pool_data, year)
+    pool_data: PoolInfoOpening = pool_opening(pool_data, pol_data, year)
     return pool_data, pol_data
 
 

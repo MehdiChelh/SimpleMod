@@ -7,6 +7,7 @@ class Pool_schema(pandera.SchemaModel):
     math_res_opening: pandera.typing.Series[np.float32]
     math_res_before_ps: pandera.typing.Series[np.float32]
     math_res_closing: pandera.typing.Series[np.float32]
+    spread: pandera.typing.Series[np.float64]  # FIXME : unify float types
 
 
 PoolDF = pandera.typing.DataFrame[Pool_schema]
@@ -16,14 +17,14 @@ PoolInfoBefPs = PoolDF
 
 
 class PoolPsRatesWithSpread_schema(Pool_schema):
-    spread: pandera.typing.Series[np.float32]
+    spread: pandera.typing.Series[np.float64]
 
 
 PoolPsRatesWithSpread = pandera.typing.DataFrame[PoolPsRatesWithSpread_schema]
 
 
 class PoolPsRates_schema(Pool_schema):
-    ps_rate: pandera.typing.Series[np.float32]
+    ps_rate: pandera.typing.Series[np.float64]
 
 
 PoolPsRates = pandera.typing.DataFrame[PoolPsRates_schema]
