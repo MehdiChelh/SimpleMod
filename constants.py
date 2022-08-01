@@ -1,0 +1,3 @@
+
+SIM_ID = 0
+SIM_COUNT = 3
