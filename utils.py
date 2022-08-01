@@ -31,6 +31,5 @@ def init_vdf_from_schema(
     return VDataFrame(pd.DataFrame(data))
 
 
-def save_outputs(data, file_name, sheetname, *args, **kwargs):
-    return
-    data.to_excel(f"./outputs/{file_name}", sheetname, *args, **kwargs)
+def save_outputs(data, writer, sheetname, *args, **kwargs):
+    data.to_excel(writer, sheetname, *args, **kwargs)

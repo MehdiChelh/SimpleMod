@@ -19,17 +19,24 @@ def pol_bef_ps(pol_data: PolInfoOpening, year: int) -> PolInfoBefPs:
 
 @delayed
 @pandera.check_types
+# FIXME this function could be optimized with multindex / xarray
 def pol_aft_ps(pol_data: PolInfoBefPs, pool_ps_rates: PoolPsRates, year: int) -> PolInfoClosing:
+    if "ps_rate" in pol_data.columns:
+        pol_data = pol_data.drop("ps_rate", axis=1)
+    # pol_data["math_res_closing"] = pol_data["math_res_bef_ps"] * \
+    #     (pool_ps_rates["ps_rate"] + 1)  # FIXME this operation is not 'valid' and should return an error as the pool_ps_rate and pol_data have different index
+    pol_data = pol_data.merge(pool_ps_rates[["ps_rate"]],
+                              left_on="id_pool", right_index=True, how="left")
     pol_data["math_res_closing"] = pol_data["math_res_bef_ps"] * \
-        (pool_ps_rates["ps_rate"] + 1)
+        (pol_data["ps_rate"] + 1)
     return pol_data
 
 
 @delayed
 @pandera.check_types
 def pool_closing(pol_data: PolInfoClosing, pool_data: PoolInfoBefPs, year: int) -> PoolInfoClosing:
-    pool_data[["math_res_opening", "math_res_before_ps", "math_res_closing"]] = pol_data.groupby(
-        "id_pool")[["math_res_opening", "math_res_before_ps", "math_res_closing"]].sum()
+    pool_data[["math_res_opening", "math_res_bef_ps", "math_res_closing"]] = pol_data.groupby(
+        "id_pool")[["math_res_opening", "math_res_bef_ps", "math_res_closing"]].sum()
     return pool_data
 
 
@@ -48,7 +55,8 @@ def pool_opening(pool_data: PoolInfoClosing, pol_data: PolInfoOpening, year: int
 @pandera.check_types
 def pol_opening(input_data_pol: InputDataPol, pol_data: PolInfoOpening, year: int) -> PolInfoOpening:  # FIXME first argument type
     if year == 0:
-        pol_data["math_res_opening"] = input_data_pol["math_res"]
+        pol_data[["id_pool", "math_res_opening"]
+                 ] = input_data_pol[["id_pool", "math_res"]]
     else:
         pol_data["math_res_opening"] = pol_data["math_res_closing"]
     return pol_data
@@ -60,7 +68,7 @@ def pool_ps(scen_eco_equity: InputDataScenEcoEquityDF, input_data_pool: InputDat
     if year == 0:
         pool_data["ps_rate"] = 0.
         # FIXME index alignement for pool_data & input_data_pool
-        pool_data["spread"] = input_data_pool["spread"]
+        pool_data[["spread"]] = input_data_pool[["spread"]]
         return pool_data
 
     rdt_year_n1 = scen_eco_equity.loc[SIM_ID,
@@ -68,8 +76,9 @@ def pool_ps(scen_eco_equity: InputDataScenEcoEquityDF, input_data_pool: InputDat
     rdt_year_n = scen_eco_equity.loc[SIM_ID,
                                      f"year_{(BEGIN_YEAR_POS+year)}"]  # FIXME for now we apply the calculation to 1 simulation only (quick(temp)fix to the index alignement issue)
     pool_data["ps_rate"] = 0.
+
     pool_data.loc[pool_data["math_res_bef_ps"] > 1000000, "ps_rate"] = (rdt_year_n /
-                                                                        rdt_year_n1 - 1 + pool_data["spread"])
+                                                                        rdt_year_n1 - 1 + pool_data.loc[pool_data["math_res_bef_ps"] > 1000000, "spread"])
 
     pool_data.loc[pool_data["math_res_bef_ps"] <= 1000000, "ps_rate"] = (rdt_year_n /
                                                                          rdt_year_n1 - 1)
@@ -84,14 +93,17 @@ def pool_ps(scen_eco_equity: InputDataScenEcoEquityDF, input_data_pool: InputDat
 @pandera.check_types
 # FIXME not sure for pool_datda:PoolInfoOpening as argument (not present in the initial architecture)
 def pool_bef_ps(pol_data: PolInfoBefPs, pool_data: PoolInfoOpening) -> PoolInfoBefPs:
-    pool_data["math_res_bef_ps"] = pol_data.groupby(
-        "id_pool")["math_res_bef_ps"].sum()
+    pool_data[["math_res_bef_ps"]] = (
+        pol_data.groupby("id_pool")[["math_res_bef_ps"]].sum()
+    )
     return pool_data
 
 
 @delayed
 @pandera.check_types
 def one_year(
+        pol_writer,
+        pool_writer,
         input_data_pol: InputDataPol,
         input_data_pool: InputDataPool,
         input_data_scen_eco_equity: InputDataScenEcoEquityDF,
@@ -99,35 +111,57 @@ def one_year(
         pool_data: PoolDF,
         year: int
 ) -> Tuple[PoolInfoClosing, PolInfoClosing]:
+    # Initialisation
+    if year == 0:
+        # FIXME need to be changed when simulation is added to pol_data.index
+        pol_data.index = input_data_pol.index
+        # FIXME need to be changed when simulation is added to pool_data.index
+        pool_data.index = input_data_pool.index
+
     pol_data: PolInfoOpening = pol_opening(input_data_pol, pol_data, year)
-    # save_outputs(pol_data, "pol_data.xlsx", "pol_opening")
-    # save_outputs(pool_data, "pool_data.xlsx", "pol_opening")
+    save_outputs(pol_data, pol_writer, f"pol_opening_{year}")
+    save_outputs(pool_data, pool_writer, f"pol_opening_{year}")
+
     pol_data: PolInfoBefPs = pol_bef_ps(pol_data, year)
-    # save_outputs(pol_data, "pol_data.xlsx", "pol_bef_ps")
-    # save_outputs(pool_data, "pool_data.xlsx", "pol_bef_ps")
+    save_outputs(pol_data, pol_writer, f"pol_bef_ps_{year}")
+    save_outputs(pool_data, pool_writer, f"pol_bef_ps_{year}")
+
     pool_data: PoolInfoBefPs = pool_bef_ps(pol_data, pool_data)
-    # save_outputs(pol_data, "pol_data.xlsx", "pool_bef_ps")
-    # save_outputs(pool_data, "pool_data.xlsx", "pool_bef_ps")
-    pool_ps_rates: PoolPsRates = pool_ps(input_data_scen_eco_equity,
-                                         input_data_pool, pool_data, year)
-    # save_outputs(pol_data, "pol_data.xlsx", "pool_ps")
-    # save_outputs(pool_data, "pool_data.xlsx", "pool_ps")
-    pol_data: PolInfoClosing = pol_aft_ps(pol_data, pool_ps_rates, year)
-    # save_outputs(pol_data, "pol_data.xlsx", "pol_aft_ps")
-    # save_outputs(pool_data, "pool_data.xlsx", "pol_aft_ps")
+    save_outputs(pol_data, pol_writer, f"pool_bef_ps_{year}")
+    save_outputs(pool_data, pool_writer, f"pool_bef_ps_{year}")
+
+    pool_data: PoolPsRates = pool_ps(input_data_scen_eco_equity,
+                                     input_data_pool, pool_data, year)
+    save_outputs(pol_data, pol_writer, f"pool_ps_{year}")
+    save_outputs(pool_data, pool_writer, f"pool_ps_{year}")
+
+    pol_data: PolInfoClosing = pol_aft_ps(pol_data, pool_data, year)
+    save_outputs(pol_data, pol_writer, f"pol_aft_ps_{year}")
+    save_outputs(pool_data, pool_writer, f"pol_aft_ps_{year}")
+
     pool_data: PoolInfoClosing = pool_closing(pol_data, pool_data, year)
-    # save_outputs(pol_data, "pol_data.xlsx", "pool_closing")
-    # save_outputs(pool_data, "pool_data.xlsx", "pool_closing")
+    save_outputs(pol_data, pol_writer, f"pool_closing_{year}")
+    save_outputs(pool_data, pool_writer, f"pool_closing_{year}")
+
     pool_data: PoolInfoOpening = pool_opening(pool_data, pol_data, year)
-    # save_outputs(pol_data, "pol_data.xlsx", "pool_opening")
-    # save_outputs(pool_data, "pool_data.xlsx", "pool_opening")
-    return pool_data, pol_data
+    save_outputs(pol_data, pol_writer, f"pool_opening_{year}")
+    save_outputs(pool_data, pool_writer, f"pool_opening_{year}")
+
+    return pol_data, pool_data
 
 
 if __name__ == "__main__":
     # load data
-    input_data_pol = VDataFrame(pd.read_csv("./data/mp_policies.csv"))
-    input_data_pool = VDataFrame(pd.read_csv("./data/mp_pool.csv"))
+    input_data_pol = VDataFrame(
+        pd.read_csv("./data/mp_policies.csv",
+                    dtype={
+                        "id_policy": int,
+                        "id_pool": int,
+                        "age": int,
+                        "math_res": float
+                    }, index_col=0))
+    input_data_pool = VDataFrame(
+        pd.read_csv("./data/mp_pool.csv", index_col=0))
     input_data_scen_eco_equity = VDataFrame(
         pd.read_csv("./data/scen_eco_sample.csv",
                     dtype={
@@ -151,8 +185,12 @@ if __name__ == "__main__":
     # FIXME devrait prendre en compte le nombre de simulations
     pool_data = init_vdf_from_schema(
         Pool_schema, nrows=nb_pool, default_data=0)
+    pol_writer = pd.ExcelWriter("outputs/pol_data.xlsx", engine='xlsxwriter')
+    pool_writer = pd.ExcelWriter("outputs/pool_data.xlsx", engine='xlsxwriter')
     for year in range(3):
-        one_year(
+        pol_data, pool_data = one_year(
+            pol_writer,
+            pool_writer,
             input_data_pol,
             input_data_pool,
             input_data_scen_eco_equity,
@@ -160,6 +198,10 @@ if __name__ == "__main__":
             pool_data,
             year
         )
+    pol_writer.save()
+    pol_writer.close()
+    pool_writer.save()
+    pool_writer.close()
 
 
 # FAQ :
