@@ -22,7 +22,7 @@ def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> 
         PolDF,
         nrows=nb_scenarios * nb_pol,  # FIXME
         default_data=0)
-    pol_data.loc[:, 'id_policy'] = list(range(1, nb_pol+1))*nb_scenarios
+    pol_data.loc[:, 'id_policy'] = list(range(1, nb_pol+1)) * nb_scenarios
     pol_data.loc[:, 'id_sim'] = np.repeat(range(nb_scenarios), nb_pol)
     pol_data = pol_data.set_index('id_policy')
 

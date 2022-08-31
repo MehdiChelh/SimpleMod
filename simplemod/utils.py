@@ -34,7 +34,7 @@ def init_vdf_from_schema(
         # dtype = field[0].arg
         dtype = field.dtype.type
         data[name] = VSeries(
-            default_data,
+            np.full(nrows, default_data),
             index=range(nrows),
             name=name,
             dtype=dtype)

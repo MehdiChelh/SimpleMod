@@ -61,7 +61,7 @@ def pool_ps(econ_data: InputDataScenEcoEquityDF,
     
     pool_data.loc[:, 'ps_rate'] = eq_return
     pool_data.loc[:, 'tot_return'] = eq_return
-    pool_data.loc[:, 'tot_return'].where(pool_data.loc[:, 'math_res_bef_ps'] < 1000000, pool_data.loc[:, 'ps_rate'] + pool_data.loc[:, 'spread'], inplace=True, axis=0) 
+    pool_data.loc[:, 'tot_return'].where(pool_data.loc[:, 'math_res_bef_ps'] < 1000000, pool_data.loc[:, 'ps_rate'] + pool_data.loc[:, 'spread'], inplace=True)
 
     #print(pool_data)
 
