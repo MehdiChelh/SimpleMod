@@ -37,7 +37,7 @@ def init_vdf_from_schema(
             np.full(nrows, default_data),
             index=range(nrows),
             name=name,
-            dtype=dtype)
+            dtype=dtype).compute()
     return VDataFrame(data)
 
 def schema_to_dtypes(panderaSchema: Union[pandera.typing.DataFrame,pandera.SchemaModel],

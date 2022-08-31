@@ -7,7 +7,7 @@ import numpy as np
 
 
 @delayed
-@check_types
+#@check_types
 def pol_opening(pol_data: PolInfoOpening,
                 year: Int,
                 sim: Int) -> PolInfoOpening:  
@@ -18,7 +18,7 @@ def pol_opening(pol_data: PolInfoOpening,
 
 
 @delayed
-@check_types
+#@check_types
 def pol_bef_ps(pol_data: PolInfoOpening,
                year: Int,
                sim: Int) -> PolInfoBefPs:
@@ -27,7 +27,7 @@ def pol_bef_ps(pol_data: PolInfoOpening,
 
 
 @delayed
-@check_types
+#@check_types
 def pool_bef_ps(pol_data: PolInfoBefPs,
                 pool_data: PoolDFFull, 
                 year: Int,
@@ -41,7 +41,7 @@ def pool_bef_ps(pol_data: PolInfoBefPs,
 
 
 @delayed
-@check_types
+#@check_types
 def pool_ps(econ_data: InputDataScenEcoEquityDF,
             pol_data: PolInfoBefPs,
             pool_data: PoolDFFull,
@@ -69,7 +69,7 @@ def pool_ps(econ_data: InputDataScenEcoEquityDF,
 
 
 @delayed
-@check_types
+#@check_types
 def pol_aft_ps(pol_data: PolInfoBefPs,
                pool_data: PoolDFFull,
                year: Int,
