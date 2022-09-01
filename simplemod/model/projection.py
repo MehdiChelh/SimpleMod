@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from time import time
 
 from typing import Tuple
@@ -42,6 +43,8 @@ def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> 
 @delayed(nout=2)
 # @check_types
 def one_year(
+        pol_writer,
+        pool_writer,
         pol_data: PolDF,
         pool_data: PoolDFFull,
         econ_data: InputDataScenEcoEquityDF,
@@ -52,10 +55,24 @@ def one_year(
     #print(pol_data.head())
 
     pol_data: PolInfoOpening = pol_opening(pol_data, year, sim)
+    pol_data.to_excel(pol_writer, f"pol_opening_{year}")
+    pool_data.to_excel(pool_writer, f"pol_opening_{year}")
+
     pol_data: PolInfoBefPs = pol_bef_ps(pol_data, year, sim)
+    pol_data.to_excel(pol_writer, f"pol_bef_ps_{year}")
+    pool_data.to_excel(pool_writer, f"pol_bef_ps_{year}")
+
     pool_data: PoolDFFull = pool_bef_ps(pol_data, pool_data, year, sim)
+    pol_data.to_excel(pol_writer, f"pool_bef_ps_{year}")
+    pool_data.to_excel(pool_writer, f"pool_bef_ps_{year}")
+
     pool_data: PoolDFFull = pool_ps(econ_data, pol_data, pool_data, year, sim)
+    pol_data.to_excel(pol_writer, f"pool_ps_{year}")
+    pool_data.to_excel(pool_writer, f"pool_ps_{year}")
+
     pol_data: PolInfoClosing = pol_aft_ps(pol_data, pool_data, year, sim)
+    pol_data.to_excel(pol_writer, f"pool_aft_ps_{year}")
+    pool_data.to_excel(pool_writer, f"pool_aft_ps_{year}")
 
     return pol_data, pool_data
 
@@ -65,7 +82,7 @@ def projection(input_data_pol: InputDataPol,
                input_data_scen_eco_equity: InputDataScenEcoEquityDF) -> Tuple[PolInfoClosing, PoolDFFull]:
     
     nb_scenarios = 0
-    nb_years = 100
+    nb_years = 3  #FIXME update to 100 once calculation has been checked
     max_scen_year = 3
 
     t_start = time()
@@ -75,10 +92,14 @@ def projection(input_data_pol: InputDataPol,
 
     print()
 
+    pol_writer = pd.ExcelWriter("outputs/pol_data.xlsx", engine='xlsxwriter')
+    pool_writer = pd.ExcelWriter("outputs/pool_data.xlsx", engine='xlsxwriter')
 
     for year in range(nb_years+1):
         print(f"--> year: {year}")
         pol_data, pool_data = one_year(
+            pol_writer,
+            pool_writer,
             pol_data,
             pool_data,
             input_data_scen_eco_equity,
@@ -92,5 +113,8 @@ def projection(input_data_pol: InputDataPol,
     t_end = time()
 
     print('Computed in {:.04f}s'.format((t_end-t_start)))
+
+    pol_writer.save()
+    pool_writer.save()
 
     return pol_data, pool_data
