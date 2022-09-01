@@ -23,7 +23,7 @@ def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> 
         PolDF,
         nrows=nb_scenarios * nb_pol,  # FIXME
         default_data=0)
-    pol_data['id_policy'] = VSeries(list(range(1, nb_pol+1)) * nb_scenarios)
+    pol_data['id_policy'] = VSeries(list(range(nb_pol)) * nb_scenarios)
     pol_data['id_sim'] = VSeries(np.repeat(range(nb_scenarios), nb_pol))
     pol_data = pol_data.set_index('id_policy')
 
@@ -31,10 +31,10 @@ def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> 
         PoolDFFull ,
         nrows=nb_scenarios * nb_pool,  # FIXME
         default_data=0)
-    pool_data['id_pool'] = VSeries(list(range(1,nb_pool+1)) * nb_scenarios)
+    pool_data['id_pool'] = VSeries(list(range(nb_pool)) * nb_scenarios)
     pool_data['id_sim'] = VSeries(np.repeat(range(nb_scenarios), nb_pool))
     pool_data = pool_data.set_index('id_pool')
-    # pol_data['id_pool'] = VSeries(input_data_pol.loc[:, 'id_pool'])
+    pol_data['id_pool'] = VSeries(input_data_pol.loc[:, 'id_pool'])
     
     pol_data['math_res_closing'] = VSeries(input_data_pol.loc[:, 'math_res'])
     pool_data['spread'] = VSeries(input_data_pool.loc[:, 'spread'])
@@ -58,6 +58,10 @@ def one_year(
     pol_data.to_excel(pol_writer, f"pol_opening_{year}")
     pool_data.to_excel(pool_writer, f"pol_opening_{year}")
 
+    pool_data: PoolInfoOpening = pool_opening(pool_data, pol_data, year)
+    pol_data.to_excel(pol_writer, f"pool_opening_{year}")
+    pool_data.to_excel(pool_writer, f"pool_opening_{year}")
+
     pol_data: PolInfoBefPs = pol_bef_ps(pol_data, year, sim)
     pol_data.to_excel(pol_writer, f"pol_bef_ps_{year}")
     pool_data.to_excel(pool_writer, f"pol_bef_ps_{year}")
@@ -73,6 +77,10 @@ def one_year(
     pol_data: PolInfoClosing = pol_aft_ps(pol_data, pool_data, year, sim)
     pol_data.to_excel(pol_writer, f"pool_aft_ps_{year}")
     pool_data.to_excel(pool_writer, f"pool_aft_ps_{year}")
+
+    pool_data: PoolInfoClosing = pool_closing(pol_data, pool_data, year)
+    pol_data.to_excel(pol_writer, f"pool_closing_{year}")
+    pool_data.to_excel(pool_writer, f"pool_closing_{year}")
 
     return pol_data, pool_data
 

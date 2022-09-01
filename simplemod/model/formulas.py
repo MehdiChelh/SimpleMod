@@ -77,10 +77,29 @@ def pol_aft_ps(pol_data: PolInfoBefPs,
 
     # FIXME make it work on multiple sims simultaneously
     #print(pool_data)
-    
+
     pol_data = pol_data.merge(pool_data[['tot_return']], on = 'id_pool', how='left')
     pol_data.loc[:, 'math_res_closing'] = pol_data.loc[:, 'math_res_bef_ps'] * (1+ pol_data.loc[:, 'tot_return'])
     #print(pol_data)
 
     pol_data.drop('tot_return', axis=1, inplace=True)
     return pol_data
+
+
+@delayed
+@check_types
+def pool_opening(pool_data: PoolInfoClosing, pol_data: PolInfoOpening, year: int) -> PoolInfoOpening:
+    if year == 0:
+        pool_data["math_res_opening"] = pol_data.groupby(
+            ["id_sim", "id_pool"])[["math_res_opening"]].sum().reset_index()["math_res_opening"]  # FIXME the syntax is not very clean (but will probably become clearer if we can use xarrays)
+    else:
+        pool_data["math_res_opening"] = pool_data["math_res_closing"]
+    return pool_data
+
+
+@delayed
+@check_types
+def pool_closing(pol_data: PolInfoClosing, pool_data: PoolInfoBefPs, year: int) -> PoolInfoClosing:
+    pool_data[["math_res_opening", "math_res_bef_ps", "math_res_closing"]] = pol_data.groupby(
+        ["id_sim", "id_pool"])[["math_res_opening", "math_res_bef_ps", "math_res_closing"]].sum().reset_index()[["math_res_opening", "math_res_bef_ps", "math_res_closing"]]
+    return pool_data
