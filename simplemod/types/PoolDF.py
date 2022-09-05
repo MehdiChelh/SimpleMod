@@ -17,14 +17,16 @@ class _PoolDF_schema(SchemaModel):
 
 PoolDF = DataFrame[_PoolDF_schema]
 
+
 class _PoolDFFull_schema(_PoolDF_schema):
     spread: Series[float]
     ps_rate: Series[float]
     tot_return: Series[float]
-    
+
     class Config:
         strict = True
         coerce = True
+
 
 PoolDFFull = DataFrame[_PoolDFFull_schema]
 PoolInfoClosing = DataFrame[_PoolDFFull_schema]

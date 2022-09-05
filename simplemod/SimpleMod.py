@@ -38,14 +38,12 @@ def main() -> int:
         dtype=schema_to_dtypes(InputDataScenEcoEquityDF, "id_sim")
     ).set_index("id_sim").loc[:SIM_COUNT, :]  # FIXME implement read_csv_with_schema / DataFrame_with_schema
 
-
-    #print(input_data_scen_eco_equity.head())
-
+    # print(input_data_scen_eco_equity.head())
 
     # %% -- projection
     pol_data, pool_data = projection(input_data_pol,
-               input_data_pool,
-               input_data_scen_eco_equity)
+                                     input_data_pool,
+                                     input_data_scen_eco_equity)
 
     return 0
 
