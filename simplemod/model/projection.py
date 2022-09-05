@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import cudf
 from time import time
 
 from typing import Tuple
@@ -173,8 +174,14 @@ def projection(input_data_pol: InputDataPol,
             pol_data, pool_data = _call
         pol_data_list.append(pol_data)
         pool_data_list.append(pool_data)
-    pol_data = pd.concat(pol_data_list)
-    pool_data = pd.concat(pool_data_list)
+
+    if VDF_MODE in (Mode.dask, Mode.pandas):
+        pol_data = pd.concat(pol_data_list)
+        pool_data = pd.concat(pool_data_list)
+    elif VDF_MODE in (Mode.dask_cudf, Mode.cudf):
+        pol_data = cudf.concat(pol_data_list)
+        pool_data = cudf.concat(pool_data_list)
+
     t_end = time()
 
     print('Computed in {:.04f}s'.format((t_end-t_start)))
