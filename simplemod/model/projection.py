@@ -14,7 +14,7 @@ from virtual_dataframe import compute, VSeries, VDF_MODE, Mode
 @check_types
 def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> Tuple[PolDF, PoolDFFull]:
 
-    nb_scenarios = SIM_COUNT
+    nb_scenarios = 1  # SIM_COUNT
     nb_pol = POL_COUNT
     nb_pool = POOL_COUNT
 
@@ -108,7 +108,7 @@ def multiple_years(
             pool_data,
             econ_data,
             min(year, max_scen_year),
-            None,
+            sim,
             SIM_COUNT
         )
     return pol_data, pool_data
@@ -120,7 +120,7 @@ def projection(input_data_pol: InputDataPol,
                input_data_pool: InputDataPool,
                input_data_scen_eco_equity: InputDataScenEcoEquityDF) -> Tuple[PolInfoClosing, PoolDFFull]:
 
-    nb_scenarios = 0
+    nb_scenarios = SIM_COUNT
     nb_years = 3  # FIXME update to 100 once calculation has been checked
     max_scen_year = 3
 
@@ -152,23 +152,29 @@ def projection(input_data_pol: InputDataPol,
     # pol_data_ = pol_data.compute()
     # # pool_data_ = pool_data.compute()
 
-    _call = multiple_years(
-        pol_writer,
-        pool_writer,
-        pol_data,
-        pool_data,
-        input_data_scen_eco_equity,
-        nb_years,
-        max_scen_year,
-        None,
-        SIM_COUNT
-    )
+    pol_data_list = []
+    pool_data_list = []
+    for sim in range(nb_scenarios+1):
+        _call = multiple_years(
+            pol_writer,
+            pool_writer,
+            pol_data,
+            pool_data,
+            input_data_scen_eco_equity.loc[:nb_scenarios, :],
+            nb_years,
+            max_scen_year,
+            sim,
+            SIM_COUNT
+        )
 
-    if VDF_MODE in (Mode.dask, Mode.dask_cudf):  # FIXME this should be in virtual_dataframe package
-        pol_data, pool_data = _call.compute()
-    else:
-        pol_data, pool_data = _call
-
+        if VDF_MODE in (Mode.dask, Mode.dask_cudf):  # FIXME this should be in virtual_dataframe package
+            pol_data, pool_data = _call.compute()
+        else:
+            pol_data, pool_data = _call
+        pol_data_list.append(pol_data)
+        pool_data_list.append(pool_data)
+    pol_data = pd.concat(pol_data_list)
+    pool_data = pd.concat(pool_data_list)
     t_end = time()
 
     print('Computed in {:.04f}s'.format((t_end-t_start)))

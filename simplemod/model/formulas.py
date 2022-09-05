@@ -56,7 +56,7 @@ def pool_ps(econ_data: InputDataScenEcoEquityDF,
         curr_year = 'y' + str(year)
         prev_year = 'y' + str(year-1)
 
-    eq_return = econ_data.loc[:, curr_year] / econ_data.loc[:, prev_year] - 1
+    eq_return = econ_data.loc[sim, curr_year] / econ_data.loc[sim, prev_year] - 1
 
     pool_data.loc[:, 'ps_rate'] = eq_return
     pool_data.loc[:, 'tot_return'] = eq_return
@@ -64,7 +64,6 @@ def pool_ps(econ_data: InputDataScenEcoEquityDF,
     #                                      pool_data.loc[:, 'ps_rate'] + pool_data.loc[:, 'spread'], inplace=True)
     pool_data.loc[:, 'tot_return'] = pool_data.loc[:, 'tot_return'].where(pool_data.loc[:, 'math_res_bef_ps'] < 1000000,
                                                                           pool_data.loc[:, 'ps_rate'] + pool_data.loc[:, 'spread'])
-
     return pool_data
 
 
