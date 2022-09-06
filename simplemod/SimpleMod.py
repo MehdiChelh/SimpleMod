@@ -22,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 def main() -> int:
     # %%
     input_data_pol = read_csv(
-        "./data/mp_policies*.csv",
+        "./data/mp_policies_1k*.csv",
         dtype=schema_to_dtypes(InputDataPol, "id_policy"),
     ).set_index("id_policy", drop=True)
 
