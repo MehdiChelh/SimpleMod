@@ -1,10 +1,10 @@
 from pandera import SchemaModel
-from pandera.typing import Series, DataFrame ,Index 
+from pandera.typing import Series, DataFrame, Index
 
 
 class _PolDF_schema(SchemaModel):
     id_sim: Series[int]
-    id_policy: Index[int]
+    id_policy: Series[int]
     id_pool: Series[int]
     math_res_opening: Series[float]
     math_res_bef_ps: Series[float]
