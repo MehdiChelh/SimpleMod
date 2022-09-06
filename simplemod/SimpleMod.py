@@ -4,6 +4,8 @@ from typing import get_args
 import click
 import dotenv
 import pandas as pd
+import math
+import cudf
 
 
 from simplemod.constants import SIM_COUNT, POL_COUNT, POOL_COUNT
@@ -11,7 +13,7 @@ from simplemod.types import InputDataPol, InputDataPool, InputDataScenEcoEquityD
 from simplemod.model import one_year, projection
 from simplemod.tools import init_logger, logging
 from simplemod.utils import init_vdf_from_schema, schema_to_dtypes
-from virtual_dataframe import read_csv, compute
+from virtual_dataframe import read_csv, compute, Mode, VDF_MODE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 def main() -> int:
     # %%
     input_data_pol = read_csv(
-        "./data/mp_policies*.csv",
+        "./data/mp_policies_1M*.csv",
         dtype=schema_to_dtypes(InputDataPol, "id_policy"),
     ).set_index("id_policy", drop=True)
 

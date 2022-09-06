@@ -54,7 +54,7 @@ if __name__ == "__main__":
     
     # projection parameters
     projectionTerm = scenarios.shape[1]-4
-    targetRows = 1000
+    targetRows = 10000
     portfolio['spread'] = np.where(portfolio['id_pool'] == 1, 0.01, 0.025)
     
     # print some info
