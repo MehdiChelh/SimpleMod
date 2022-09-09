@@ -108,7 +108,7 @@ def one_year(
     return pol_data, pool_data
 
 
-@ delayed(nout=2)
+# @ delayed(nout=2)
 # @check_types
 def multiple_years(
         # pol_writer,
@@ -122,7 +122,7 @@ def multiple_years(
         nb_sim: Int
 ) -> Tuple[PolInfoClosing, PoolInfoClosing]:
     for year in range(nb_years+1):
-        # print(f"--> year: {year}")
+        print(f"--> year: {year}")
         pol_data, pool_data = one_year(
             # pol_writer,
             # pool_writer,
@@ -131,7 +131,7 @@ def multiple_years(
             econ_data,
             min(year, max_scen_year),
             # None,
-            SIM_COUNT
+            nb_sim
         )
     return pol_data, pool_data
     # TODO: result must be input
@@ -142,7 +142,6 @@ def projection(input_data_pol: InputDataPol,
                input_data_pool: InputDataPool,
                input_data_scen_eco_equity: InputDataScenEcoEquityDF) -> Tuple[PolInfoClosing, PoolDFFull]:
 
-    nb_scenarios = 0
     nb_years = NB_YEARS  # FIXME update to 100 once calculation has been checked
     max_scen_year = 3
 
@@ -156,38 +155,36 @@ def projection(input_data_pol: InputDataPol,
     pol_writer = pd.ExcelWriter("outputs/pol_data.xlsx", engine='xlsxwriter')
     pool_writer = pd.ExcelWriter("outputs/pool_data.xlsx", engine='xlsxwriter')
 
-    with VClient():
-        # pol_data_ = pol_data.compute()
-        # # pool_data_ = pool_data.compute()
+    # pol_data_ = pol_data.compute()
+    # # pool_data_ = pool_data.compute()
+    _call = multiple_years(
+        # None,
+        # None,
+        pol_data,
+        pool_data,
+        input_data_scen_eco_equity,
+        nb_years,
+        max_scen_year,
+        # None,
+        SIM_COUNT
+    )
+    # TODO: result must be input
+    # TODO: save all years into results
 
-        _call = multiple_years(
-            # None,
-            # None,
-            pol_data,
-            pool_data,
-            input_data_scen_eco_equity,
-            nb_years,
-            max_scen_year,
-            # None,
-            SIM_COUNT
-        )
-        # TODO: result must be input
-        # TODO: save all years into results
+    if VDF_MODE in (Mode.dask, Mode.dask_cudf):  # FIXME this should be in virtual_dataframe package
+        pol_data, pool_data = _call.compute()
+    else:
+        pol_data, pool_data = _call
 
-        if VDF_MODE in (Mode.dask, Mode.dask_cudf):  # FIXME this should be in virtual_dataframe package
-            pol_data, pool_data = _call.compute()
-        else:
-            pol_data, pool_data = _call
-
-    print(pol_data)
-    print(pool_data)
+    # print(pol_data)
+    # print(pool_data)
     t_end = time()
 
     print('Computed in {:.04f}s'.format((t_end-t_start)))
 
-    print(f"outputs/pol_final_{VDF_MODE}.csv")
+    # print(f"outputs/pol_final_{VDF_MODE}.csv")
     pol_data.to_csv(f"outputs/pol_final_{VDF_MODE}.csv")
-    print(f"outputs/pool_final_{VDF_MODE}.csv")
+    # print(f"outputs/pool_final_{VDF_MODE}.csv")
     pool_data.to_csv(f"outputs/pool_final_{VDF_MODE}.csv")
 
     pol_writer.save()

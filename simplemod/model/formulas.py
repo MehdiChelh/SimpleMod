@@ -10,8 +10,8 @@ import numpy as np
 # @check_types
 def pol_opening(pol_data: PolInfoOpening,
                 year: Int) -> PolInfoOpening:
-    pol_data.loc[:, 'math_res_opening'] = pol_data.loc[:, 'math_res_closing']
-    pol_data.loc[:, 'math_res_closing'] = 0
+    pol_data['math_res_opening'] = pol_data['math_res_closing']
+    pol_data['math_res_closing'] = 0
 
     return pol_data
 
