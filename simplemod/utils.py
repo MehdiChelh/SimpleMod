@@ -26,7 +26,8 @@ def create_zeros_df(index_shape, cols):
 def init_vdf_from_schema(
         panderaSchema: Union[pandera.typing.DataFrame, pandera.SchemaModel],
         nrows: int = 0,
-        default_data: int = 0, ) -> VDataFrame:
+        default_data: int = 0,
+        npartitions: int = 1) -> VDataFrame:
     schema = get_args(panderaSchema)[0]
     if not isinstance(schema, SchemaModel):
         schema = schema.to_schema()
@@ -41,7 +42,7 @@ def init_vdf_from_schema(
             index=range(nrows),
             name=name,
             dtype=dtype).compute()
-    return VDataFrame(data)
+    return VDataFrame(data, npartitions=npartitions)
 
 
 def schema_to_dtypes(panderaSchema: Union[pandera.typing.DataFrame, pandera.SchemaModel],
