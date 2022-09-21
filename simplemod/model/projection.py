@@ -21,6 +21,7 @@ from virtual_dataframe import compute, VSeries, VDF_MODE, Mode, VClient, visuali
 def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> Tuple[PolDF, PoolDFFull]:
 
     nb_scenarios = SIM_COUNT
+    print("---- nb_scenarios:", nb_scenarios)
     nb_pol = POL_COUNT
     nb_pool = POOL_COUNT
 
@@ -44,10 +45,18 @@ def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> 
     pool_data['id_pool'] = VSeries(list(range(nb_pool)) * nb_scenarios)
     pool_data['id_sim'] = VSeries(np.repeat(range(nb_scenarios), nb_pool))
     # pool_data = pool_data.set_index('id_pool')
-
-    pol_data['id_pool'] = VSeries(np.tile(input_data_pol.loc[:, 'id_pool'].to_numpy(), nb_scenarios))
-    pol_data['math_res_closing'] = VSeries(np.tile(input_data_pol.loc[:, 'math_res'].to_numpy(), nb_scenarios))
-    pool_data['spread'] = VSeries(np.tile(input_data_pool.loc[:, 'spread'].to_numpy(), nb_scenarios))
+    
+    pol_data = pol_data.drop("id_pool", axis=1).merge(
+        input_data_pol[["id_policy", "id_pool"]], on="id_policy", how="left")
+    pol_data = pol_data.drop("math_res_closing", axis=1).merge(
+        input_data_pol[["id_policy", "math_res"]].rename(columns={"math_res": "math_res_closing"}), on="id_policy", how="left")
+    pool_data = pool_data.drop("spread", axis=1).merge(
+        input_data_pool[["id_pool", "spread"]], on="id_pool", how="left")
+    # print(concat([input_data_pol.loc[:, 'id_pool']] * nb_scenarios, pol_data).compute())
+    # pol_data['id_pool'] = concat([input_data_pol.loc[:, 'id_pool']] * nb_scenarios, pol_data)['id_pool']
+    # pol_data['math_res_closing'] = concat([input_data_pol.loc[:, 'math_res']]
+    #                                       * nb_scenarios, pol_data)
+    # pool_data['spread'] = concat([input_data_pool.loc[:, 'spread']] * nb_scenarios, pool_data)
     return pol_data, pool_data
 
 
@@ -58,6 +67,8 @@ def one_year(
         pool_data: PoolDFFull,
         econ_data: InputDataScenEcoEquityDF,
         year: Int,
+
+
 ) -> Tuple[PolInfoClosing, PoolInfoClosing]:
 
     pol_data: PolInfoOpening = pol_opening(pol_data, year)
@@ -144,6 +155,12 @@ def projection(input_data_pol: InputDataPol,
         pol_data = pol_data.compute()
         pool_data = pool_data.compute()
         input_data_scen_eco_equity = input_data_scen_eco_equity.compute()
+
+    try:
+        nb_partitions = pol_data.npartitions
+    except:
+        nb_partitions = 1
+
     if SIM_STRATEGY == SimStrategy.loop:
         __call_list = []
         for s in range(SIM_TOTAL_COUNT):
@@ -204,4 +221,4 @@ def projection(input_data_pol: InputDataPol,
     # pool_data.to_csv(
     #     f"outputs/pool_final_{SIM_STRATEGY.value}_{VDF_MODE.value}_{DISTRIBUTION_STRATEGY.value}.csv", index=False)
 
-    return pol_data, pool_data, t_end-t_compute_call, nb_mp, nb_sim
+    return pol_data, pool_data, t_end-t_compute_call, nb_mp, nb_sim, nb_partitions

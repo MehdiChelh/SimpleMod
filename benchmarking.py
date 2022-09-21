@@ -32,7 +32,7 @@ def main() -> int:
     CODE_HASH = get_git_revision_hash()
     ROOT_PATH = f"./outputs/benchmarking/{CODE_HASH}"
     os.environ["ROOT_PATH"] = ROOT_PATH
-    benchmark_plan = pd.read_csv(f"{ROOT_PATH}/benchmark_plan.csv", separator=",")
+    benchmark_plan = pd.read_csv(f"{ROOT_PATH}/benchmark_plan.csv", sep=",")
 
     if not os.path.isdir(f"{ROOT_PATH}/dask_reports/"):
         os.makedirs(f"{ROOT_PATH}/dask_reports/")
@@ -44,18 +44,25 @@ def main() -> int:
     for i, run_config in benchmark_plan.iterrows():
         print("=================================================================================== row :", i)
         for key, val in run_config.items():
-            if key != "SIM_ID":
+            if key not in ("SIM_ID", "NB_MP"):
                 os.environ[key] = str(val)
                 print(f"------ {key}:", val)
 
         RUN_PATH = f"{ROOT_PATH}/{run_config['POL_COUNT']}/{run_config['SIM_TOTAL_COUNT']}/"
-        os.makedirs(RUN_PATH, exist_ok=True)
+        os.makedirs(f"{RUN_PATH}/output/", exist_ok=True)
+        os.makedirs(f"{RUN_PATH}/error/", exist_ok=True)
         os.environ["RUN_PATH"] = RUN_PATH
 
         bashCommand = "python simplemod/SimpleMod.py"
         process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
 
         output, error = process.communicate()
+        log_name = f"{run_config['SIM_STRATEGY']}-{run_config['DISTRIBUTION_STRATEGY']}-{run_config['VDF_MODE']}"
+        with open(f"{RUN_PATH}/output/{log_name}.log", "w") as f:
+            f.write(output.decode())
+        if error:
+            with open(f"{RUN_PATH}/error/{log_name}.log", "w") as f:
+                f.write(error.decode())
 
         print(output.decode() if output else output)
         print(error.decode() if error else error)

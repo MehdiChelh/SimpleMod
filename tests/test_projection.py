@@ -38,10 +38,10 @@ def _projection(*args, **kwargs):
     ).loc[:SIM_TOTAL_COUNT, :]  # .set_index("id_sim").loc[:SIM_TOTAL_COUNT, :]  # FIXME implement read_csv_with_schema / DataFrame_with_schema
 
     with virtual_dataframe.VClient() as client:
-        pol_data, pool_data = projection(input_data_pol,
-                                         input_data_pool,
-                                         input_data_scen_eco_equity,
-                                         client)
+        pol_data, pool_data, *rest = projection(input_data_pol,
+                                                input_data_pool,
+                                                input_data_scen_eco_equity,
+                                                client)
     return pol_data, pool_data
 
 
