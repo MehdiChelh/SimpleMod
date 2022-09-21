@@ -45,11 +45,13 @@ def init_model(input_data_pol: InputDataPol, input_data_pool: InputDataPool) -> 
     pool_data['id_pool'] = VSeries(list(range(nb_pool)) * nb_scenarios)
     pool_data['id_sim'] = VSeries(np.repeat(range(nb_scenarios), nb_pool))
     # pool_data = pool_data.set_index('id_pool')
-    
+
     pol_data = pol_data.drop("id_pool", axis=1).merge(
         input_data_pol[["id_policy", "id_pool"]], on="id_policy", how="left")
+
     pol_data = pol_data.drop("math_res_closing", axis=1).merge(
         input_data_pol[["id_policy", "math_res"]].rename(columns={"math_res": "math_res_closing"}), on="id_policy", how="left")
+
     pool_data = pool_data.drop("spread", axis=1).merge(
         input_data_pool[["id_pool", "spread"]], on="id_pool", how="left")
     # print(concat([input_data_pol.loc[:, 'id_pool']] * nb_scenarios, pol_data).compute())

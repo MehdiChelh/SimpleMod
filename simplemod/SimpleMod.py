@@ -28,53 +28,39 @@ LOGGER = logging.getLogger(__name__)
 
 @click.command(short_help="Sample for Cardif")
 def main() -> int:
-
     input_data_pol = read_csv(
         {
-            1038: "http://10.65.1.133:8000/mp_policies_1k.csv",  # "./data/mp_policies_1k.csv",
+            # "./data/mp_policies_1k.csv",
+            # ["http://10.65.1.133:8000/mp_policies_1k.csv" for i in range(1)],
+            1038: "http://10.65.1.133:8000/mp_policies_1k.csv",
             # "./data/mp_policies_1k-*.csv",
-            10380: [f"http://10.65.1.133:8000/mp_policies_1k-{i}.csv" for i in range(9)],
+            # [f"http://10.65.1.133:8000/mp_policies_10k.csv" for i in range(1)],
+            10380: "http://10.65.1.133:8000/mp_policies_10k.csv",
             # "./data/mp_policies_10k-*.csv",
-            103800: [f"http://10.65.1.133:8000/mp_policies_1k-{i}.csv" for i in range(9)],
-            1038000: "http://10.65.1.133:8000/mp_policies_1k.csv",  # "./data/mp_policies_100k-*.csv",
-        }[POL_COUNT],
+            # [f"http://10.65.1.133:8000/mp_policies_100k.csv" for i in range(1)],
+            103800: "http://10.65.1.133:8000/mp_policies_100k.csv",
+            # "./data/mp_policies_100k-*.csv",
+            # ["http://10.65.1.133:8000/mp_policies_1M.csv" for i in range(1)],
+            1038000: "http://10.65.1.133:8000/mp_policies_1M.csv",
+        }[(POL_COUNT)],
         dtype=schema_to_dtypes(InputDataPol, "id_policy"),
-    ).persist()  # .set_index("id_policy", drop=True)
+    )  # .set_index("id_policy", drop=True)
 
     input_data_pool = read_csv(
         "./data/mp_pool*.csv",
         dtype=schema_to_dtypes(InputDataPool, "id_pool")
-    ).persist()  # .set_index("id_pool")
+    )  # .set_index("id_pool")
 
     input_data_scen_eco_equity = read_csv(
         "./data/scen_eco_sample*.csv",
         dtype=schema_to_dtypes(InputDataScenEcoEquityDF, "id_sim")
-    ).loc[:SIM_TOTAL_COUNT, :].persist()  # .set_index("id_sim").loc[:SIM_TOTAL_COUNT, :]  # FIXME implement read_csv_with_schema / DataFrame_with_schema
+    ).loc[:SIM_TOTAL_COUNT, :]  # .set_index("id_sim").loc[:SIM_TOTAL_COUNT, :]  # FIXME implement read_csv_with_schema / DataFrame_with_schema
     print(input_data_pol)
     # print(input_data_scen_eco_equity.head())
 
     BENCH = os.getenv("BENCH")
     if not BENCH:
         with VClient() as client:
-            # input_data_pol = client.persist(read_csv(
-            #     {
-            #         1038: "./data/mp_policies_1k.csv",
-            #         10380: "./data/mp_policies_1k-*.csv",
-            #         103800: "./data/mp_policies_10k-*.csv",
-            #         1038000: "./data/mp_policies_100k-*.csv",
-            #     }[POL_COUNT],
-            #     dtype=schema_to_dtypes(InputDataPol, "id_policy"),
-            # ))  # .set_index("id_policy", drop=True)
-
-            # input_data_pool = client.persist(read_csv(
-            #     "./data/mp_pool*.csv",
-            #     dtype=schema_to_dtypes(InputDataPool, "id_pool")
-            # ))  # .set_index("id_pool")
-
-            # input_data_scen_eco_equity = client.persist(read_csv(
-            #     "./data/scen_eco_sample*.csv",
-            #     dtype=schema_to_dtypes(InputDataScenEcoEquityDF, "id_sim")
-            # ).loc[:SIM_TOTAL_COUNT, :])  # .set_index("id_sim").loc[:SIM_TOTAL_COUNT, :]  # FIXME implement read_csv_with_schema / DataFrame_with_schema
 
             t_start = time.time()
             pol_data, pool_data, *rest = projection(input_data_pol,
@@ -88,21 +74,24 @@ def main() -> int:
         RUN_PATH = os.environ["RUN_PATH"]
         CODE_HASH = os.getenv("CODE_HASH")
 
-        t0 = time.time()
         with VClient() as client:
             if VDF_MODE in (Mode.dask, Mode.dask_cudf):
+                client.restart()
                 with performance_report(
                         filename=f"{RUN_PATH}/{SIM_STRATEGY}-{DISTRIBUTION_STRATEGY}-{VDF_MODE}-report.html"):
-                    pol_data, pool_data, compute_time, nb_mp, nb_sim = projection(input_data_pol,
-                                                                                  input_data_pool,
-                                                                                  input_data_scen_eco_equity,
-                                                                                  client)
+                    t0 = time.time()
+                    pol_data, pool_data, compute_time, nb_mp, nb_sim, nb_partitions = projection(input_data_pol,
+                                                                                                 input_data_pool,
+                                                                                                 input_data_scen_eco_equity,
+                                                                                                 client)
+                    t1 = time.time()
             else:
-                pol_data, pool_data, compute_time, nb_mp, nb_sim = projection(input_data_pol,
-                                                                              input_data_pool,
-                                                                              input_data_scen_eco_equity,
-                                                                              client)
-        t1 = time.time()
+                t0 = time.time()
+                pol_data, pool_data, compute_time, nb_mp, nb_sim, nb_partitions = projection(input_data_pol,
+                                                                                             input_data_pool,
+                                                                                             input_data_scen_eco_equity,
+                                                                                             client)
+                t1 = time.time()
 
         pol_data.to_csv(f"{RUN_PATH}/pol_data-{SIM_STRATEGY.value}-{DISTRIBUTION_STRATEGY.value}-{VDF_MODE.value}.csv")
         pool_data.to_csv(
@@ -124,6 +113,7 @@ def main() -> int:
                 "compute_time": [compute_time],
                 "check_POL_COUNT": [nb_mp],
                 "check_SIM_COUNT": [nb_sim],
+                "check_nb_partitions": [nb_partitions],
                 "outputs": [RUN_PATH]}
 
         pd.concat([pd.read_csv(f"{ROOT_PATH}/results.csv"), pd.DataFrame(data)]

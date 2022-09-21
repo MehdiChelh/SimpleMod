@@ -54,18 +54,19 @@ def main() -> int:
         os.environ["RUN_PATH"] = RUN_PATH
 
         bashCommand = "python simplemod/SimpleMod.py"
-        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         output, error = process.communicate()
         log_name = f"{run_config['SIM_STRATEGY']}-{run_config['DISTRIBUTION_STRATEGY']}-{run_config['VDF_MODE']}"
         with open(f"{RUN_PATH}/output/{log_name}.log", "w") as f:
             f.write(output.decode())
+
         if error:
             with open(f"{RUN_PATH}/error/{log_name}.log", "w") as f:
                 f.write(error.decode())
 
-        print(output.decode() if output else output)
-        print(error.decode() if error else error)
+        print(output.decode() if output else None)
+        print(error.decode() if error else None)
 
     return 0
 
