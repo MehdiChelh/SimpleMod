@@ -27,7 +27,9 @@ LOGGER = logging.getLogger(__name__)
 # %%
 
 @click.command(short_help="Sample for Cardif")
-def main() -> int:
+@click.option("--out", default="./tmp", help="Folder for saving outputs")
+@click.option("--suffix", default="", help="Suffix for saving pol_data and pool_data")
+def main(out, suffix) -> int:
     input_data_pol = read_csv(
         {
             # "./data/mp_policies_1k.csv",
@@ -55,8 +57,6 @@ def main() -> int:
         "./data/scen_eco_sample*.csv",
         dtype=schema_to_dtypes(InputDataScenEcoEquityDF, "id_sim")
     ).loc[:SIM_TOTAL_COUNT, :]  # .set_index("id_sim").loc[:SIM_TOTAL_COUNT, :]  # FIXME implement read_csv_with_schema / DataFrame_with_schema
-    print(input_data_pol)
-    # print(input_data_scen_eco_equity.head())
 
     BENCH = os.getenv("BENCH")
     if not BENCH:
@@ -67,8 +67,9 @@ def main() -> int:
                                                     input_data_pool,
                                                     input_data_scen_eco_equity,
                                                     client)
-
             t_end = time.time()
+        pol_data.to_csv(f"{out}/pol_data{suffix}.csv", index=False)
+        pool_data.to_csv(f"{out}/pool_data{suffix}.csv", index=False)
     else:
         ROOT_PATH = os.environ["ROOT_PATH"]
         RUN_PATH = os.environ["RUN_PATH"]

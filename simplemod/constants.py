@@ -5,6 +5,7 @@ from enum import Enum
 class SimStrategy(Enum):
     loop = "loop"
     default = "default"
+    map_partitions = "map_partitions"
 
 
 SIM_STRATEGY: SimStrategy = SimStrategy[(os.getenv("SIM_STRATEGY") or "default")]

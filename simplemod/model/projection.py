@@ -10,6 +10,7 @@ import cudf
 
 from typing import List, Tuple
 from pandera import Int
+import warnings
 
 from simplemod.constants import DISTRIBUTION_STRATEGY, NB_YEARS, POL_PARTITIONS, POOL_PARTITIONS, POL_COUNT, POOL_COUNT, SIM_COUNT, SIM_TOTAL_COUNT, SIM_STRATEGY, DistributionStrategy, SimStrategy
 from .formulas import *
@@ -100,7 +101,7 @@ def _multiple_years(
         max_scen_year: Int,
 ) -> Tuple[PolInfoClosing, PoolInfoClosing]:
     for year in range(nb_years+1):
-        print(f"--> year: {year}")
+        # print(f"--> year: {year}")
         t_start = time()
         pol_data, pool_data = one_year(
             pol_data,
@@ -187,6 +188,35 @@ def projection(input_data_pol: InputDataPol,
             concat = pd.concat
         pol_data = concat([_pol_data for _pol_data, _ in res]).reset_index(drop=True)
         pool_data = concat([_pool_data for _, _pool_data in res]).reset_index(drop=True)
+
+    elif SIM_STRATEGY == SimStrategy.map_partitions:
+        if VDF_MODE not in (Mode.dask, Mode.dask_cudf) or DISTRIBUTION_STRATEGY != DistributionStrategy.virtual_dataframe:
+            # FIXME adapt the SIM_STRATEGY depending on the VDF_MODE
+            raise Exception(
+                f"Wrong VDF_MODE/SIM_STRATEGY/DISTRIBUTION_STRATEGY. Cannot use {SIM_STRATEGY} with {VDF_MODE} and {DISTRIBUTION_STRATEGY}.")
+        if nb_partitions != SIM_TOTAL_COUNT:
+            raise Exception(
+                f"When using SIM_STRATEGY={SimStrategy.map_partitions}, the number of partitions ({nb_partitions}) should be equal to the total number of simulations ({SIM_TOTAL_COUNT}).")
+        if pool_data.npartitions != nb_partitions:
+            warnings.warn(
+                f"pol_data and pool_data have not the same number of partitions ({pol_data.npartitions} != {pool_data.npartitions}). pool_data will bee repartitioned.")
+            pool_data = pool_data.repartition(pol_data.npartitions)
+
+        _call = pol_data.map_partitions(multiple_years,
+                                        pool_data,
+                                        input_data_scen_eco_equity.loc[:(nb_partitions + 1)].repartition(nb_partitions),
+                                        nb_years,
+                                        max_scen_year,
+                                        meta=pol_data)
+        t_compute_call = time()
+        res = _call.compute()
+        if VDF_MODE in (Mode.cudf, Mode.dask_cudf):
+            concat = cudf.concat
+        else:
+            concat = pd.concat
+        pol_data = concat([_pol_data for _pol_data, _ in res])
+        pool_data = concat([_pool_data for _, _pool_data in res])
+        t_end = time()
 
     else:
         _pol_data, _pool_data = multiple_years(
